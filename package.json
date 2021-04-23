@@ -1,0 +1,37 @@
+{
+  "name": "@hoctail/client",
+  "version": "1.2.1",
+  "description": "Hoctail CLI client",
+  "main": "index.js",
+  "types": "./types/index.d.ts",
+  "engines": {
+    "node": ">=10 <13"
+  },
+  "scripts": {
+    "cli": "HOCTAIL_ENDPOINT=ws://localhost:3333 NODE_ENV=development node cli.js"
+  },
+  "author": "Hoctail",
+  "license": "MIT",
+  "dependencies": {
+    "@hoctail/query": "^1.2.0",
+    "@rollup/plugin-commonjs": "^18.0.0-1",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^11.1.1",
+    "child-process-promise": "^2.2.1",
+    "commander": "^5.0.0",
+    "dotenv": "^8.2.0",
+    "dotenv-expand": "^5.1.0",
+    "mime-types": "^2.1.24",
+    "pkg-up": "^3.1.0",
+    "rollup": "^2.38.1"
+  },
+  "devDependencies": {
+    "docdash": "^1.2.0",
+    "jsdoc": "^3.6.6",
+    "jsdoc-to-markdown": "^6.0.1",
+    "typescript": "^4.0.0"
+  },
+  "bin": {
+    "hoctail": "cli.js"
+  }
+}
