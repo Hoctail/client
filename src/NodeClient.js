@@ -7,10 +7,12 @@
  * @namespace module:nodejs
 */
 
-const { resolve } = require('path')
+const { resolve, dirname, basename } = require('path')
 const { readFileSync } = require('fs')
 const { StringDecoder } = require('string_decoder')
 const Client = require('@hoctail/query')
+const tar = require('tar')
+const { Response } = require('node-fetch')
 const { pack } = require('./utils')
 
 const decoder = new StringDecoder('utf8')
@@ -311,6 +313,47 @@ class NodeClient extends Client {
       }
       return entry
     })
+  }
+
+  /**
+   * Copy a file or directory to server (filesystem)
+   * Files can be accessed from the `express` app using the usual `fs` module
+   * Each app has its own root filesystem and usually starts in `/`, unless `process.cwd()` is used
+   * @example
+   * await client.copy('./dir')
+   * // ./dir/file -> /dir/file
+   *
+   * await client.copy('./dir/')
+   * // ./dir/file -> /file
+   *
+   * await client.copy('./dir/file')
+   * // ./dir/file -> /file
+   *
+   * await client.copy('./localDir', '/remoteDir')
+   * // ./localDir/file -> /remoteDir/localDir/file
+   *
+   * await client.copy('./localDir/', '/remoteDir')
+   * // ./localDir/file -> /remoteDir/file
+   *
+   * @public
+   * @param {string} src - source file or dir (local)
+   * @param {string} dst - destination path (remote)
+   * @return {Promise<string[]>} - destination paths
+   */
+  async copy (src, dst = '/') {
+    let cwd, srcPath
+    if (src.endsWith('/')) {
+      cwd = src
+      srcPath = '.'
+    } else {
+      cwd = dirname(src)
+      srcPath = basename(src)
+    }
+    // create a `tar.gz` file stream with all the file attributes
+    const tarStream = tar.create({ cwd, gzip: true } , [srcPath])
+    const buffer = await new Response(tarStream).buffer()
+    // sends the stream to `untar()` on server
+    return this.wait('untar', buffer, dst)
   }
 }
 
