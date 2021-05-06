@@ -114,6 +114,7 @@ function _getConfig (main) {
       file: outFile,
       format: 'cjs',
       exports: 'auto',
+      sourcemap: 'inline',
     },
     pkg,
   }
