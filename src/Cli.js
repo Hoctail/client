@@ -4,7 +4,7 @@ const { readFileSync, realpathSync } = require('fs')
 const repl = require('repl')
 const commander = require('commander')
 const { spawn } = require('child_process')
-const chalk = require('chalk').default
+const chalk = require('chalk')
 const { findPkgDir } = require('./utils')
 
 const { NodeClient } = require('./NodeClient')
@@ -71,7 +71,7 @@ class Cli {
       const client = this.createClient(cmdObj)
       try {
         await command(client, ...args)
-        client.close()
+        await client.close()
         process.exit(0)
       } catch (e) {
         console.log(e.message)
