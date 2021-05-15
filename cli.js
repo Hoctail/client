@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-require('./config')
+const config = require('./config')
 const { Cli } = require('.')
 
-const cli = new Cli()
+const cli = new Cli(config.parsed)
 cli.setup()
 cli.run()

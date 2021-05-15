@@ -1,6 +1,6 @@
 const { resolve, join, dirname, basename } = require('path')
 const os = require('os')
-const { readFileSync, realpathSync } = require('fs')
+const { readFileSync, realpathSync, writeFileSync } = require('fs')
 const repl = require('repl')
 const commander = require('commander')
 const { spawn } = require('child_process')
@@ -27,7 +27,7 @@ class Cli {
   /**
    * @constructor
    */
-  constructor () {
+  constructor (config) {
     this.program = new commander.Command()
     this.program
       .version(version)
@@ -36,12 +36,14 @@ class Cli {
       .option('--key <api_key>', 'Hoctail API key, env: HOCTAIL_API_KEY')
       .option('--app <app_name>', `Hoctail app name, format: 'owner/name', env: HOCTAIL_APP`)
       .option('--log-level <log_level>', 'Minimal log level, default: LOG, env: HOCTAIL_LOG_LEVEL')
+    this.config = config || {}
   }
 
   /**
    * Setup the cli arguments/options
    */
   setup () {
+    this._setupEnv()
     this._setupServe()
     this._setupInstall()
     this._setupRepl()
@@ -52,7 +54,7 @@ class Cli {
    */
   run () {
     this.program.parseAsync(process.argv).catch((e) => {
-      console.log(e.message)
+      console.error(e.message)
       process.exit(1)
     })
   }
@@ -74,7 +76,7 @@ class Cli {
         await client.close()
         process.exit(0)
       } catch (e) {
-        console.log(e.message)
+        console.error(e.message)
         process.exit(1)
       }
     }
@@ -91,7 +93,9 @@ class Cli {
     if (!client.token) {
       throw new Error(`No api key was found, use HOCTAIL_API_KEY env variable`)
     }
-    console.log(`Using endpoint: ${client.url} ...`)
+    if (client.logLevel < NodeClient.LOG.LOG) {
+      console.error(`Using endpoint: ${client.url} ...`)
+    }
     return client
   }
 
@@ -215,7 +219,7 @@ class Cli {
 
         function die () {
           if (!script) {
-            console.log(`Exiting...`)
+            console.error(`Exiting...`)
           }
           const t = setTimeout(() => {
             process.exit(0)
@@ -258,6 +262,81 @@ class Cli {
       console.log('  $ hoctail')
       console.log('  hoctail> ')
     })
+  }
+
+  /**
+   * Get the local env vars from .env parser
+   * @returns {Object<string, string>}
+   * @private
+   */
+  _getEnv () {
+    const env = {}
+    for (let [k, v] of Object.entries(this.config)) {
+      k = k.toUpperCase()
+      if (!k.startsWith('HOCTAIL_')) {
+        env[k] = v
+      }
+    }
+    return env
+  }
+
+  /**
+   * Add the `env` command
+   * @protected
+   */
+  _setupEnv () {
+    const action = this._wrap(async (client, cmd) => {
+      try {
+        await this._ensureApp(client)
+        const remote = await client.getEnv()
+        const local = this._getEnv()
+        switch (cmd) {
+          case 'push': {
+            await client.setEnv(local)
+            for (const k of Object.keys(remote)) {
+              if (local[k] == null) {
+                await client.delEnv(k)
+              }
+            }
+            console.log(await client.getEnv())
+          }
+            break
+          case 'pull': {
+            const conf = []
+            for (let [k, v] of Object.entries(this.config)) {
+              if (k.startsWith('HOCTAIL_')) {
+                conf.push(`${k}='${v}'`)
+              }
+            }
+            for (let [k, v] of Object.entries(remote)) {
+              conf.push(`${k}='${v}'`)
+            }
+            writeFileSync(join(process.cwd(), '.env'), conf.join('\n') + '\n')
+            console.log(remote)
+          }
+            break
+          case 'show': {
+            console.log(remote)
+          }
+            break
+          default:
+            throw new Error(`Unknown env command: ${cmd}`)
+        }
+      } catch (e) {
+        console.error(e.stack)
+        throw e
+      }
+    })
+    this.program
+      .command('env <cmd>')
+      .description(
+        `manipulate env variables
+        \t\t\texamples:
+        \t\t\t  ${this.program.name()} env show : show all the remote app env variables
+        \t\t\t  ${this.program.name()} env push : replace app env variables with the contents of local .env file
+        \t\t\t  ${this.program.name()} env pull : download remote app variables to a local .env file
+        `)
+      .action(action)
   }
 }
 
