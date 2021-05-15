@@ -311,7 +311,7 @@ class Cli {
             for (let [k, v] of Object.entries(remote)) {
               conf.push(`${k}='${v}'`)
             }
-            writeFileSync(join(process.cwd(), '.env'), conf.join('\n') + '\n')
+            writeFileSync(resolve(process.cwd(), '.env'), conf.join('\n') + '\n')
             console.log(remote)
           }
             break

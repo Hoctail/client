@@ -80,7 +80,6 @@ $ hoctail --app MyApp ./sript.js
 $
 ```
 
-
 # Client-side javascript API
 Client interacts with a server using a [NodeClient](https://hoctail.github.io/hoctail/module-nodejs-NodeClient.html) API.
 The REPL context contains `hoctail` global object - a configured instance of *NodeClient* that can be used.  
@@ -163,6 +162,12 @@ Options:
   -h, --help                   display help for command
 
 Commands:
+  env <cmd>                    manipulate env variables
+          			examples:
+          			  hoctail env show : show all the remote app env variables
+          			  hoctail env push : replace app env variables with the contents of local .env file
+          			  hoctail env pull : download remote app variables to a local .env file
+          
   serve [path]                 serve a local `expressjs` app on server, default: [path] = .
   install <path> [serverPath]  install a local npm pkg/module on server, optionally use a server path
           			examples:
@@ -231,6 +236,50 @@ user@MyApp> await hoctail.wait(() => {
   return pkg.func()
 })
 ```
+
+### Environment variables
+
+Get the current env variables for an app
+
+```bash
+$ hoctail env show
+{}
+```
+
+Use a local `.env` file to push and synchronize env variables
+
+```bash
+$ cat .env
+HOCTAIL_API_KEY=f5eb18b6-b593-11eb-9a4b-0b6531f7e888
+HOCTAIL_APP='My App'
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+$ hoctail env push
+{
+  AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+  AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+}
+```
+
+_Note: `HOCTAIL_*` env vars are not pushed to server, these are CLI specific_
+
+You can also pull remote vars locally
+
+```bash
+$ hoctail env pull
+{
+  NODE_ENV: 'production'
+}
+
+$ cat .env
+HOCTAIL_API_KEY=f5eb18b6-b593-11eb-9a4b-0b6531f7e888
+HOCTAIL_APP='My App'
+NODE_ENV='production'
+
+```
+
+_Note: need to restart the app to pick up new env vars in most cases, (`hoctail serve` will restart for you)_
 
 ## Author
 
