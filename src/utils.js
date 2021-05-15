@@ -53,7 +53,7 @@ function _getOutputPath (dir) {
 /**
  * Create a typical rollup config for bundling server-side modules
  * @param {string} main - path to an entry point, can be a directory with package.json or an actual entry point .js file
- * @return {{ input: external:rollup.InputOptions, output: external:rollup.OutputOptions, pkg: Object }}
+ * @return {{ input: external:rollup.InputOptions, output: external:rollup.OutputOptions, pkg: Object|null }}
  * @private
  */
 function _getConfig (main) {
@@ -105,6 +105,7 @@ function _getConfig (main) {
         json(),
         nodeResolve({
           mainFields: ['module', 'jsnext', 'main'],
+          exportConditions: ['node'],
         }),
         commonjs(),
       ],
