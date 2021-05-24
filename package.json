@@ -5,7 +5,7 @@
   "main": "index.js",
   "types": "./types/index.d.ts",
   "engines": {
-    "node": ">=10 <13"
+    "node": ">=10"
   },
   "scripts": {
     "cli": "HOCTAIL_ENDPOINT=ws://localhost:3333 NODE_ENV=development node cli.js"

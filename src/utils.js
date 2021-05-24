@@ -6,7 +6,6 @@ const json = require('@rollup/plugin-json')
 const commonjs = require('@rollup/plugin-commonjs')
 const { nodeResolve } = require('@rollup/plugin-node-resolve')
 const pkgUp = require('pkg-up')
-const { NodeClient } = require('./NodeClient')
 
 /**
  * Rollup types {@link https://rollupjs.org/guide/en/}
@@ -24,7 +23,7 @@ let installed
 
 /**
  * Load existing/installed packages from server
- * @param {NodeClient|NodeClient.Tx} client - client instance
+ * @param {Object} client - client instance
  * @return {Promise<void>}
  * @private
  * @async
@@ -124,7 +123,7 @@ function _getConfig (main) {
 /**
  * Bundle the entry point with rollup
  * @param {string} main - main entry point dir or file
- * @param {NodeClient|NodeClient.Tx} client - client to use for server queries
+ * @param {Object} client - client to use for server queries
  * @param {*} [options] - additional rollup options
  * @return {Promise<{{ input: external:rollup.InputOptions, output: external:rollup.OutputOptions }}>} resulting config
  * @async
