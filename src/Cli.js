@@ -396,13 +396,13 @@ function _launchRepl (client, prompt) {
       }).finally(() => this.displayPrompt())
     }
   })
-  r.defineCommand('http-server-log', {
+  r.defineCommand('http_server_log', {
     help: 'Get last N http-server requests, N=1 by default, optionally specify columns list',
     action (arg) {
       _readHttpLogs.call(this, arg, 'server', client)
     }
   })
-  r.defineCommand('http-client-log', {
+  r.defineCommand('http_client_log', {
     help: 'Get last N http-client (fetch) requests, N=1 by default, optionally specify columns list',
     action (arg) {
       _readHttpLogs.call(this, arg, 'client', client)
