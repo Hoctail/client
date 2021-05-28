@@ -96,6 +96,9 @@ class Cli {
     if (client.logLevel < NodeClient.LOG.LOG) {
       console.error(`Using endpoint: ${client.url} ...`)
     }
+    if (!client.app) {
+      throw new Error(`Please define --app or use HOCTAIL_APP env variable`)
+    }
     return client
   }
 
@@ -205,9 +208,6 @@ class Cli {
         let client
         try {
           client = this.createClient(cmdObj)
-          if (!client.app) {
-            throw new Error(`Please define --app or use HOCTAIL_APP env variable`)
-          }
           try {
             await client.connect()
           } catch (e) {
