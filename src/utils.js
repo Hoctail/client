@@ -5,7 +5,9 @@ const { rollup } = require('rollup')
 const json = require('@rollup/plugin-json')
 const commonjs = require('@rollup/plugin-commonjs')
 const { nodeResolve } = require('@rollup/plugin-node-resolve')
+const { createFilter } = require('@rollup/pluginutils')
 const pkgUp = require('pkg-up')
+const MagicString = require('magic-string')
 
 /**
  * Rollup types {@link https://rollupjs.org/guide/en/}
@@ -46,7 +48,22 @@ async function _loadInstalled (client) {
  * @private
  */
 function _getOutputPath (dir) {
-  return path.join(dir, '.hoctail', 'server.js')
+  return path.join(dir, '.hoctail', 'bundle.js')
+}
+
+const outputPlugin = {
+  name: 'hoctail-output',
+  async generateBundle (options, bundle) {
+    const filter = createFilter(options.include, options.exclude)
+    Object.keys(bundle).forEach(id => {
+      if (filter(id)) {
+        const magicString = new MagicString(bundle[id].code)
+        magicString.prepend('(function (){ ')
+        magicString.append('})()\n')
+        bundle[id].code = magicString.toString()
+      }
+    })
+  },
 }
 
 /**
@@ -107,6 +124,7 @@ function _getConfig (main) {
           exportConditions: ['node'],
         }),
         commonjs(),
+        outputPlugin,
       ],
       external: installed,
     },
@@ -115,6 +133,10 @@ function _getConfig (main) {
       format: 'cjs',
       exports: 'auto',
       sourcemap: 'inline',
+      sourcemapPathTransform: sourcePath => sourcePath.replace(
+        `..${path.sep}`,
+        `${pkg.name}${path.sep}`
+      )
     },
     pkg,
   }
