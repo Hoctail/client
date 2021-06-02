@@ -20,7 +20,8 @@ const decoder = new StringDecoder('utf8')
 /**
  * User-defined options to Client constructor
  * @typedef {Object.<string, any>} UserOptions
- * @memberOf module:nodejs
+ * @memberOf module:nodejs~NodeClient
+ * @public
  * @property {string} endpoint - endpoint URL
  * @property {string} key - API key
  * @property {string} [baseURL] - endpoint URL
@@ -47,7 +48,7 @@ const decoder = new StringDecoder('utf8')
  */
 class NodeClient extends Client {
   /**
-   * @param {UserOptions} options - client connection options
+   * @param {module:nodejs~NodeClient.UserOptions} options - client connection options
    * @param {string[]} [args] - command line arguments, default: process.argv
    */
   constructor (options, args = process.argv) {
@@ -142,14 +143,30 @@ class NodeClient extends Client {
   }
 
   /**
+   * Data on installed package
+   * @typedef {Object} InstalledItem
+   * @memberOf module:nodejs~NodeClient
+   * @public
+   * @property {string} name - package name on server
+   * @property {string} path - local src path
+   * @property {string} bundle - local bundled code path
+   */
+
+  /**
    * Install an npm package on server
    * @example
    * // install a package from node_modules
-   * await client.install('./node_modules/lodash.pick')
+   * const result = await client.install('./node_modules/lodash.pick')
    * await client.wait(() => typeof require('lodash.pick'))
+   * console.log(result)
+   * {
+   *   name: 'lodash.pick',
+   *   path: '/home/user/project/node_modules/lodash.pick/index.js',
+   *   bundle: '/home/user/project/node_modules/lodash.pick/.hoctail/bundle.js'
+   * }
    *
    * // install a package from node_modules with a different name
-   * await client.install('./node_modules/lodash.pick', null, 'lodash-pick')
+   * await client.install('./node_modules/lodash.pick', 'lodash-pick')
    * await client.wait(() => typeof require('lodash-pick'))
    *
    * // install js file as a package
@@ -158,14 +175,23 @@ class NodeClient extends Client {
    *
    * @public
    * @param {string} [src] - src package dir or entry-point .js file, default: .
-   * @param {any} [options] - install options, additional `rollup` options if needed
+   * @param {any} [options] - install options, additional `rollup` options if needed, can be omitted
    * @param {string} [name] - server-side package name, optional
-   * @param {object} [pkg] - optional package metadata (from package.json)
-   * @return {Promise<{name: string, path: string}>} path: local src path, name: package name on server
+   * @param {object} [pkg] - optional package metadata (as in `package.json`)
+   * @return {Promise<module:nodejs~NodeClient.InstalledItem>}
    */
   async install (src, options, name, pkg) {
     src = resolve(src || process.cwd())
-    options = Object.assign( { onwarn: (warn) => console.log(warn.message) }, options)
+    if (typeof name === 'object') {
+      pkg = name
+      name = options
+      options = null
+    }
+    if (typeof options === 'string') {
+      name = options
+      options = null
+    }
+    options = Object.assign( { onwarn: (warn) => console.error(warn.message) }, options)
     const config = await pack(src, this, options)
     if (!pkg) {
       pkg = config.pkg
@@ -180,6 +206,7 @@ class NodeClient extends Client {
     return {
       name,
       path: config.input.input,
+      bundle: config.output.file,
     }
   }
 
