@@ -4,3 +4,4 @@ jsdoc.config.json
 *.tar.gz
 .env
 img/
+test/
