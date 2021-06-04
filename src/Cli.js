@@ -5,12 +5,14 @@ const repl = require('repl')
 const commander = require('commander')
 const { spawn } = require('child_process')
 const chalk = require('chalk')
+const updateNotifier = require('update-notifier')
 const { findPkgDir } = require('./utils')
 
 const { NodeClient } = require('./NodeClient')
 
 const _path = resolve(__dirname)
-const version = require(join(_path, '..', 'package.json')).version
+const pkg = require(join(_path, '..', 'package.json'))
+updateNotifier({ pkg }).notify()
 
 /**
  * @callback CliCommand
@@ -30,7 +32,7 @@ class Cli {
   constructor (config) {
     this.program = new commander.Command()
     this.program
-      .version(version)
+      .version(pkg.version)
       .name('hoctail')
       .option('--endpoint <endpoint_url>', 'Hoctail Endpoint url, env: HOCTAIL_ENDPOINT')
       .option('--key <api_key>', 'Hoctail API key, env: HOCTAIL_API_KEY')
