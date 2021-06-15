@@ -7,6 +7,11 @@ const { spawn } = require('child_process')
 const chalk = require('chalk')
 const updateNotifier = require('update-notifier')
 const { findPkgDir } = require('./utils')
+const rollup = require('rollup')
+const loadConfigFile = require('rollup/dist/loadConfigFile')
+const path = require('path')
+const fs = require('fs')
+const mime = require('mime-types')
 
 const { NodeClient } = require('./NodeClient')
 
@@ -48,6 +53,7 @@ class Cli {
     this._setupEnv()
     this._setupServe()
     this._setupInstall()
+    this._setupPageCommand()
     this._setupRepl()
   }
 
@@ -122,6 +128,22 @@ class Cli {
   }
 
   /**
+   * Check if app type is the same as requested by user
+   * @param {NodeClient} client
+   * @param {string} appTypeRequired
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _checkAppType (client, appTypeRequired) {
+    const appType = await client.getAppType()
+    const res = appType === appTypeRequired
+    if (!res) {
+      console.warn(`Error: Command aborted, app type should be: '${appTypeRequired}'.`)
+    }
+    return appType === appTypeRequired
+  }
+
+  /**
    * Install a local package/file into remote app
    * @param {NodeClient} client
    * @param {string} path - local path to entry point (file/dir)
@@ -168,6 +190,76 @@ class Cli {
         \t\t\t  ${this.program.name()} install ./index.js : install a package from an entrypoint file
         \t\t\t  ${this.program.name()} install some-package : install a local npm package
         \t\t\t  ${this.program.name()} install ./module.js ./module : install a local entrypoint as require('./module')`)
+      .action(action)
+  }
+
+  async _putFile (client, path, url, content_type) {
+    const data = fs.readFileSync(path)
+    content_type = content_type || mime.lookup(path)
+    await client.tx(async (tx) => {
+      await tx.call(`http_server.put`, url, content_type, data)
+    })
+  }
+
+  async rollupBundle (inputPath, rollupConfigPath) {
+    let { options, warnings } = await loadConfigFile(rollupConfigPath)
+    warnings.flush()
+    options = options[0]
+
+    // use inputPath or 'main' from package.json
+    let pkg = require(path.join(
+      findPkgDir(inputPath),
+      'package.json',
+    )) || {}
+    options.input = inputPath || pkg.main
+
+    // options is an array of "inputOptions" objects with an additional "output"
+    // property that contains an array of "outputOptions".
+    // The following will generate all outputs for all inputs, and write them to disk the same
+    // way the CLI does it:
+    const res = []
+    const bundle = await rollup.rollup(options)
+    for (const idx in options.output) {
+      const outputOptions = options.output[idx]
+      const files = await bundle.write(outputOptions)
+      files.output.forEach(async (artefact, pieceIdx) => {
+        const { fileName, code } = artefact
+        res.push(artefact)
+        console.log(`created: ${fileName}, size: ${code.length} bytes. ${!pieceIdx ? '' : 'Will be ignored' }`)
+      })
+    }
+    bundle.close()
+    return res
+  }
+
+  _setupPageCommand () {
+    const action = this._wrap(async (client, filePath) => {
+      try {
+        await this._ensureApp(client)
+        if(await this._checkAppType(client,'page')) {
+          console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(client.app)} :\n`)
+
+          const bundles = await this.rollupBundle(
+            filePath,
+            path.resolve(__dirname, '..', 'rollup.page.config.js'),
+          )
+          if (bundles.length) {
+            const { fileName } = bundles[0]
+            console.log('put', fileName)
+            await this._putFile (client, fileName, '/miniapp.js')
+          }
+        }
+      } catch (e) {
+        console.error(e.stack)
+        throw e
+      }
+    })
+    this.program
+      .command('page <path>')
+      .description(`install UI app type = 'page'. Single js file or npm package.
+      \t\t\texamples:
+      \t\t\t  ${this.program.name()} page ./index.js : use single js file
+      \t\t\t  ${this.program.name()} page some-package : use a local npm module`)
       .action(action)
   }
 

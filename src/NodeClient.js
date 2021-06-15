@@ -142,6 +142,26 @@ class NodeClient extends Client {
     }
   }
 
+    /**
+   * Get app type.
+   * 
+   * Must be in init state already.
+   * @public
+   * @return {Promise<string>}
+   */
+  async getAppType () {
+    return await this.wait(() => {
+      const { serverSideTx } = require('@hoctail/patch-interface')
+      let appType = ''
+      serverSideTx(hoc, ({ store }) => {
+        const { AppRecordSpace } = require('@hoc/apps.api')
+        const app = AppRecordSpace.create({ record: store.system.schemaRecord.id })
+        appType = app.appTypeName
+      })
+      return appType
+    })
+  }
+
   /**
    * Data on installed package
    * @typedef {Object} InstalledItem
