@@ -138,9 +138,10 @@ class Cli {
     const appType = await client.getAppType()
     const res = appType === appTypeRequired
     if (!res) {
-      console.warn(`Error: Command aborted, app type should be: '${appTypeRequired}'.`)
+      console.warn(`Error: Bad app type: '${appType}', expected '${appTypeRequired
+      }'. Create new '${appTypeRequired}' app or change type of existing one.`)
     }
-    return appType === appTypeRequired
+    return res
   }
 
   /**
@@ -193,9 +194,9 @@ class Cli {
       .action(action)
   }
 
-  async _putFile (client, path, url, content_type) {
-    const data = fs.readFileSync(path)
-    content_type = content_type || mime.lookup(path)
+  async _putFile (client, filePath, url, content_type) {
+    const data = fs.readFileSync(filePath)
+    content_type = content_type || mime.lookup(filePath)
     await client.tx(async (tx) => {
       await tx.call(`http_server.put`, url, content_type, data)
     })
@@ -225,7 +226,7 @@ class Cli {
       files.output.forEach(async (artefact, pieceIdx) => {
         const { fileName, code } = artefact
         res.push(artefact)
-        console.log(`created: ${fileName}, size: ${code.length} bytes. ${!pieceIdx ? '' : 'Will be ignored' }`)
+        console.log(`bundle size: ${code.length} bytes ${!pieceIdx ? '' : '. Won\'t upload this file.' }`)
       })
     }
     bundle.close()
@@ -236,16 +237,14 @@ class Cli {
     const action = this._wrap(async (client, filePath) => {
       try {
         await this._ensureApp(client)
+        console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(client.app)} :\n`)
         if(await this._checkAppType(client,'page')) {
-          console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(client.app)} :\n`)
-
           const bundles = await this.rollupBundle(
             filePath,
             path.resolve(__dirname, '..', 'rollup.page.config.js'),
           )
           if (bundles.length) {
             const { fileName } = bundles[0]
-            console.log('put', fileName)
             await this._putFile (client, fileName, '/miniapp.js')
           }
         }
