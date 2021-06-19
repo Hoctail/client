@@ -13,9 +13,16 @@ const { StringDecoder } = require('string_decoder')
 const Client = require('@hoctail/query')
 const tar = require('tar')
 const { Response } = require('node-fetch')
-const { pack } = require('./utils')
-
 const decoder = new StringDecoder('utf8')
+const path = require('path')
+const chalk = require('chalk')
+const {
+  pack,
+  checkAppType,
+  rollupBundle,
+  putFile,
+} = require('./utils')
+
 
 /**
  * User-defined options to Client constructor
@@ -127,22 +134,6 @@ class NodeClient extends Client {
   }
 
   /**
-   * Initialize application
-   *
-   * Should be executed once if you're creating an app manually.
-   * CLI or UI commands will usually do it for you
-   * @public
-   * @return {Promise<void>}
-   */
-  async initApp () {
-    const initialized = await this.wait(() => hoc.hasTree())
-    if (!initialized) {
-      await this.wait('public.init_schema')
-      await this.call('public.rebase')
-    }
-  }
-
-    /**
    * Get app type.
    * 
    * Must be in init state already.
@@ -160,6 +151,39 @@ class NodeClient extends Client {
       })
       return appType
     })
+  }
+
+  /**
+   * Ensure that app was initialized (first time)
+   * @param {NodeClient} client
+   * @returns {Promise<void>}
+   * @private
+   */
+   async _ensureApp () {
+    if (!this.app) {
+      throw new Error(`Target app undefined, see --help`)
+    }
+    const appState = await this.getAppState()
+    if (appState.state === 'created') {
+      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(client.app)} :\n`)
+      await this.initApp()
+    }
+  }
+
+  /**
+   * Initialize application
+   *
+   * Should be executed once if you're creating an app manually.
+   * CLI or UI commands will usually do it for you
+   * @public
+   * @return {Promise<void>}
+   */
+  async initApp () {
+    const initialized = await this.wait(() => hoc.hasTree())
+    if (!initialized) {
+      await this.wait('public.init_schema')
+      await this.call('public.rebase')
+    }
   }
 
   /**
@@ -227,6 +251,22 @@ class NodeClient extends Client {
       name,
       path: config.input.input,
       bundle: config.output.file,
+    }
+  }
+
+  async installPage (filePath) {
+    await this._ensureApp()
+    console.log(`${chalk.green('Will update page → ')} ${
+      chalk.cyan(this.app)} :\n`)
+    if(await checkAppType(this, 'page')) {
+      const bundles = await rollupBundle(
+        filePath,
+        path.resolve(__dirname, '..', 'rollup.page.config.js'),
+      )
+      if (bundles.length) {
+        const { fileName } = bundles[0]
+        await putFile (this, fileName, '/miniapp.js')
+      }
     }
   }
 

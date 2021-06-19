@@ -8,6 +8,8 @@ const { nodeResolve } = require('@rollup/plugin-node-resolve')
 const { createFilter } = require('@rollup/pluginutils')
 const pkgUp = require('pkg-up')
 const MagicString = require('magic-string')
+const mime = require('mime-types')
+const loadConfigFile = require('rollup/dist/loadConfigFile')
 
 /**
  * Rollup types {@link https://rollupjs.org/guide/en/}
@@ -179,7 +181,68 @@ function findPkgDir (main) {
   return pkgPath ? path.dirname(pkgPath) : null
 }
 
+async function rollupBundle (inputPath, rollupConfigPath) {
+  let { options, warnings } = await loadConfigFile(rollupConfigPath)
+  warnings.flush()
+  options = options[0]
+
+  // use inputPath or 'main' from package.json
+  let pkg = require(path.join(
+    findPkgDir(inputPath),
+    'package.json',
+  )) || {}
+  options.input = inputPath || pkg.main
+
+  // options is an array of "inputOptions" objects with an additional "output"
+  // property that contains an array of "outputOptions".
+  // The following will generate all outputs for all inputs, and write them to disk the same
+  // way the CLI does it:
+  const res = []
+  const bundle = await rollup(options)
+  for (const idx in options.output) {
+    const outputOptions = options.output[idx]
+    const files = await bundle.write(outputOptions)
+    files.output.forEach(async (artefact, pieceIdx) => {
+      const { fileName, code } = artefact
+      res.push(artefact)
+      console.log(`bundle size: ${code.length} bytes ${!pieceIdx ? '' : '. Won\'t upload this file.' }`)
+    })
+  }
+  bundle.close()
+  return res
+}
+
+async function putFile (client, filePath, url, content_type) {
+  const data = fs.readFileSync(filePath)
+  content_type = content_type || mime.lookup(filePath)
+  await client.tx(async (tx) => {
+    await tx.call(`http_server.put`, url, content_type, data)
+  })
+}
+
+/**
+ * Check if app type is the same as requested by user
+ * @param {NodeClient} client
+ * @param {string} appTypeRequired
+ * @returns {Promise<void>}
+ * @private
+ */
+ async function checkAppType (client, appTypeRequired) {
+  const appType = await client.getAppType()
+  const res = appType === appTypeRequired
+  if (!res) {
+    console.warn(
+      `Error: Bad app type: '${appType}', expected '${
+        appTypeRequired}'. Create new '${appTypeRequired
+        }' app or change type of existing one.`)
+  }
+  return res
+}
+
 module.exports = {
   pack,
   findPkgDir,
+  rollupBundle,
+  putFile,
+  checkAppType,
 }

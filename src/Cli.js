@@ -7,11 +7,6 @@ const { spawn } = require('child_process')
 const chalk = require('chalk')
 const updateNotifier = require('update-notifier')
 const { findPkgDir } = require('./utils')
-const rollup = require('rollup')
-const loadConfigFile = require('rollup/dist/loadConfigFile')
-const path = require('path')
-const fs = require('fs')
-const mime = require('mime-types')
 
 const { NodeClient } = require('./NodeClient')
 
@@ -111,40 +106,6 @@ class Cli {
   }
 
   /**
-   * Ensure that app was initialized (first time)
-   * @param {NodeClient} client
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _ensureApp (client) {
-    if (!client.app) {
-      throw new Error(`Target app undefined, see --help`)
-    }
-    const appState = await client.getAppState()
-    if (appState.state === 'created') {
-      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(client.app)} :\n`)
-      await client.initApp()
-    }
-  }
-
-  /**
-   * Check if app type is the same as requested by user
-   * @param {NodeClient} client
-   * @param {string} appTypeRequired
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _checkAppType (client, appTypeRequired) {
-    const appType = await client.getAppType()
-    const res = appType === appTypeRequired
-    if (!res) {
-      console.warn(`Error: Bad app type: '${appType}', expected '${appTypeRequired
-      }'. Create new '${appTypeRequired}' app or change type of existing one.`)
-    }
-    return res
-  }
-
-  /**
    * Install a local package/file into remote app
    * @param {NodeClient} client
    * @param {string} path - local path to entry point (file/dir)
@@ -169,7 +130,7 @@ class Cli {
     const action = this._wrap(async (client, path, serverPath) => {
       try {
         console.log('')
-        await this._ensureApp(client)
+        await client._ensureApp()
         console.log(`${chalk.green('Will install → ')} ${chalk.cyan(client.app)} :\n`)
         let pkg
         const pkgDir = findPkgDir(path)
@@ -194,60 +155,10 @@ class Cli {
       .action(action)
   }
 
-  async _putFile (client, filePath, url, content_type) {
-    const data = fs.readFileSync(filePath)
-    content_type = content_type || mime.lookup(filePath)
-    await client.tx(async (tx) => {
-      await tx.call(`http_server.put`, url, content_type, data)
-    })
-  }
-
-  async rollupBundle (inputPath, rollupConfigPath) {
-    let { options, warnings } = await loadConfigFile(rollupConfigPath)
-    warnings.flush()
-    options = options[0]
-
-    // use inputPath or 'main' from package.json
-    let pkg = require(path.join(
-      findPkgDir(inputPath),
-      'package.json',
-    )) || {}
-    options.input = inputPath || pkg.main
-
-    // options is an array of "inputOptions" objects with an additional "output"
-    // property that contains an array of "outputOptions".
-    // The following will generate all outputs for all inputs, and write them to disk the same
-    // way the CLI does it:
-    const res = []
-    const bundle = await rollup.rollup(options)
-    for (const idx in options.output) {
-      const outputOptions = options.output[idx]
-      const files = await bundle.write(outputOptions)
-      files.output.forEach(async (artefact, pieceIdx) => {
-        const { fileName, code } = artefact
-        res.push(artefact)
-        console.log(`bundle size: ${code.length} bytes ${!pieceIdx ? '' : '. Won\'t upload this file.' }`)
-      })
-    }
-    bundle.close()
-    return res
-  }
-
   _setupPageCommand () {
     const action = this._wrap(async (client, filePath) => {
       try {
-        await this._ensureApp(client)
-        console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(client.app)} :\n`)
-        if(await this._checkAppType(client,'page')) {
-          const bundles = await this.rollupBundle(
-            filePath,
-            path.resolve(__dirname, '..', 'rollup.page.config.js'),
-          )
-          if (bundles.length) {
-            const { fileName } = bundles[0]
-            await this._putFile (client, fileName, '/miniapp.js')
-          }
-        }
+        await client.installPage(filePath)
       } catch (e) {
         console.error(e.stack)
         throw e
@@ -270,7 +181,7 @@ class Cli {
     const action = this._wrap(async (client, path) => {
       try {
         console.log('')
-        await this._ensureApp(client)
+        await client._ensureApp()
         console.log(`${chalk.green('Will serve at → ')} ${chalk.cyan(client.app)} :\n`)
         await this._install(client, path, './server')
         const url = await client.wait(() => { return require('@hoc/http-server').url() })
@@ -383,7 +294,7 @@ class Cli {
   _setupEnv () {
     const action = this._wrap(async (client, cmd) => {
       try {
-        await this._ensureApp(client)
+        await client._ensureApp()
         const remote = await client.getEnv()
         const local = this._getEnv()
         switch (cmd) {
