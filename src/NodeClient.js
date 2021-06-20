@@ -165,7 +165,7 @@ class NodeClient extends Client {
     }
     const appState = await this.getAppState()
     if (appState.state === 'created') {
-      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(client.app)} :\n`)
+      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(this.app)} :\n`)
       await this.initApp()
     }
   }
@@ -254,19 +254,28 @@ class NodeClient extends Client {
     }
   }
 
-  async installPage (filePath) {
+  /**
+   * Create and install bundle to a 'page' app type.
+   * @param {string} filePath path to js file to bundle or path to bundle
+   * @param {boolean} [bundled=false] set true if filePath is already bundled
+  */
+  async installPage (filePath, bundled = false) {
     await this._ensureApp()
-    console.log(`${chalk.green('Will update page → ')} ${
-      chalk.cyan(this.app)} :\n`)
+    console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(this.app)} :\n`)
     if(await checkAppType(this, 'page')) {
-      const bundles = await rollupBundle(
-        filePath,
-        path.resolve(__dirname, '..', 'rollup.page.config.js'),
-      )
-      if (bundles.length) {
-        const { fileName } = bundles[0]
-        await putFile (this, fileName, '/miniapp.js')
+      let bundledName
+      if (bundled) bundledName = filePath
+      else {
+        const bundles = await rollupBundle(
+          filePath,
+          path.resolve(__dirname, '..', 'rollup.page.config.js'),
+        )
+        if (bundles.length) {
+          const { fileName } = bundles[0]
+          bundledName = fileName
+        }
       }
+      await putFile (this, bundledName, '/miniapp.js')
     }
   }
 

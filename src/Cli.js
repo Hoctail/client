@@ -6,7 +6,8 @@ const commander = require('commander')
 const { spawn } = require('child_process')
 const chalk = require('chalk')
 const updateNotifier = require('update-notifier')
-const { findPkgDir } = require('./utils')
+const { findPkgDir, rollupBundle } = require('./utils')
+const path = require('path')
 
 const { NodeClient } = require('./NodeClient')
 
@@ -49,6 +50,7 @@ class Cli {
     this._setupServe()
     this._setupInstall()
     this._setupPageCommand()
+    this._setupDryRunPage()
     this._setupRepl()
   }
 
@@ -67,16 +69,18 @@ class Cli {
    * @param {CliCommand} command
    * @return {function(...[*]): Promise<void>}
    */
-  _wrap (command) {
+  _wrap (command, withClient=true) {
     return async (...args) => {
       if (args.length !== command.length) {
         console.warn(`WARN: Unknown/redundant options were ignored: ${args[args.length - 1].join(' ')}`)
       }
       const cmdObj = args[command.length - 1]
-      const client = this.createClient(cmdObj)
+      const client = withClient ? this.createClient(cmdObj) : null
       try {
         await command(client, ...args)
-        await client.close()
+        if (withClient) {
+          await client.close()
+        }
         process.exit(0)
       } catch (e) {
         console.error(e.message)
@@ -156,6 +160,7 @@ class Cli {
   }
 
   _setupPageCommand () {
+    // if dryrun specified then we have no client
     const action = this._wrap(async (client, filePath) => {
       try {
         await client.installPage(filePath)
@@ -166,7 +171,29 @@ class Cli {
     })
     this.program
       .command('page <path>')
-      .description(`install UI app type = 'page'. Single js file or npm package.
+      .description(`install UI app type = 'page'. path - is path to single js file or npm package.
+      \t\t\texamples:
+      \t\t\t  ${this.program.name()} page ./index.js : use single js file
+      \t\t\t  ${this.program.name()} page some-package : use a local npm module`)
+      .action(action)
+  }
+
+  _setupDryRunPage () {
+    // if dryrun specified then we have no client
+    const action = this._wrap(async (client, filePath) => {
+      try {
+        await rollupBundle(
+          filePath,
+          path.resolve(__dirname, '..', 'rollup.page.config.js'),
+        )
+      } catch (e) {
+        console.error(e.stack)
+        throw e
+      }
+    }, false)
+    this.program
+      .command('dryRunPage <path>')
+      .description(`Will only create a bundle. path - is path to js file or npm package.
       \t\t\texamples:
       \t\t\t  ${this.program.name()} page ./index.js : use single js file
       \t\t\t  ${this.program.name()} page some-package : use a local npm module`)
