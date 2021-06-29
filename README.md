@@ -9,7 +9,14 @@
 
 ### 🏠 [Homepage](https://github.com/hoctail/client)
 
-## Install
+### Index
+* [Install](#install)
+* [Hoctail server application](#server-app)
+* [Hoctail client](#client)
+* [Example server app](#server-app-example)
+* [CLI reference](#cli)
+
+## Install <a name="install"></a>
 
 Install the client, create and export [API key](https://hoctail.github.io/hoctail/tutorial-api-keys.html)
 ```
@@ -17,7 +24,7 @@ npm install @hoctail/client
 export HOCTAIL_API_KEY=Your-API-Key-Here
 ```
 
-# Hoctail server application
+# Hoctail server application <a name="server-app"></a>
 > *Hoctail server app* is a typical [Expressjs](https://expressjs.com/) application we run in a virtual server.
 > Every Hoctail app has an endpoint that looks like <span style='color:blue'>*demo.hoctail.io/username/myapp*</span>. 
 
@@ -29,7 +36,7 @@ Add dependencies to your package.json and run the `serve` command.
 
 *Note:* if you have no other deps you don't need to have `package.json` at all.
 
-# Hoctail client
+# Hoctail client <a name="client"></a>
 ## Hoctail client can serve an application on the platform
 ```bash
 # optionally specify `--key` if you didn't export HOCTAIL_API_KEY
@@ -90,7 +97,7 @@ Each Hoctail application has a set of pre-created tables/views like `logs` in it
 A global [hoc](https://hoctail.github.io/hoctail/hoc.html) object is available in your javascript server app.
 It can be used to access the platform server side APIs.
 
-# Example server app
+# Example server app <a name="server-app-example"></a>
 
 Create `express` app
 
@@ -147,7 +154,7 @@ Hello world
 $ 
 ```
 
-# CLI reference
+# CLI reference <a name="cli"></a>
 
 ```bash
 $ hoctail --help

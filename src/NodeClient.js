@@ -255,20 +255,20 @@ class NodeClient extends Client {
   }
 
   /**
-   * Create and install bundle to a 'page' app type.
+   * Create and install bundle to a 'mini' app type.
    * @param {string} filePath path to js file to bundle or path to bundle
    * @param {boolean} [bundled=false] set true if filePath is already bundled
   */
-  async installPage (filePath, bundled = false) {
+  async installMini (filePath, bundled = false) {
     await this._ensureApp()
-    console.log(`${chalk.green('Will update page → ')} ${chalk.cyan(this.app)} :\n`)
-    if(await checkAppType(this, 'page')) {
+    console.log(`${chalk.green(`Will update 'mini' app → `)} ${chalk.cyan(this.app)} :\n`)
+    if(await checkAppType(this, 'mini')) {
       let bundledName
       if (bundled) bundledName = filePath
       else {
         const bundles = await rollupBundle(
           filePath,
-          path.resolve(__dirname, '..', 'rollup.page.config.js'),
+          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
         )
         if (bundles.length) {
           const { fileName } = bundles[0]

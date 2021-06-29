@@ -23,7 +23,7 @@ if (miniApp) {
 export default {
   input: 'index.js',
   output: {
-    file: './bundle.js',
+    file: './miniAppBundled.js',
     format: 'iife',
     name: 'miniApp',
     banner: banner,

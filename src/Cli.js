@@ -163,18 +163,18 @@ class Cli {
     // if dryrun specified then we have no client
     const action = this._wrap(async (client, filePath) => {
       try {
-        await client.installPage(filePath)
+        await client.installMini(filePath)
       } catch (e) {
         console.error(e.stack)
         throw e
       }
     })
     this.program
-      .command('page <path>')
-      .description(`install UI app type = 'page'. path - is path to single js file or npm package.
+      .command('mini <path>')
+      .description(`install UI app type = 'mini'. path - is path to single js file or npm package.
       \t\t\texamples:
-      \t\t\t  ${this.program.name()} page ./index.js : use single js file
-      \t\t\t  ${this.program.name()} page some-package : use a local npm module`)
+      \t\t\t  ${this.program.name()} mini ./index.js : use single js file
+      \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
       .action(action)
   }
 
@@ -184,7 +184,7 @@ class Cli {
       try {
         await rollupBundle(
           filePath,
-          path.resolve(__dirname, '..', 'rollup.page.config.js'),
+          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
         )
       } catch (e) {
         console.error(e.stack)
@@ -195,8 +195,8 @@ class Cli {
       .command('dryRunPage <path>')
       .description(`Will only create a bundle. path - is path to js file or npm package.
       \t\t\texamples:
-      \t\t\t  ${this.program.name()} page ./index.js : use single js file
-      \t\t\t  ${this.program.name()} page some-package : use a local npm module`)
+      \t\t\t  ${this.program.name()} mini ./index.js : use single js file
+      \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
       .action(action)
   }
 
