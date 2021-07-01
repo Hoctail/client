@@ -49,8 +49,8 @@ class Cli {
     this._setupEnv()
     this._setupServe()
     this._setupInstall()
-    this._setupPageCommand()
-    this._setupDryRunPage()
+    this._setupMini()
+    this._setupDryRunMini()
     this._setupRepl()
   }
 
@@ -159,7 +159,7 @@ class Cli {
       .action(action)
   }
 
-  _setupPageCommand () {
+  _setupMini () {
     // if dryrun specified then we have no client
     const action = this._wrap(async (client, filePath) => {
       try {
@@ -178,7 +178,7 @@ class Cli {
       .action(action)
   }
 
-  _setupDryRunPage () {
+  _setupDryRunMini () {
     // if dryrun specified then we have no client
     const action = this._wrap(async (client, filePath) => {
       try {
@@ -192,7 +192,7 @@ class Cli {
       }
     }, false)
     this.program
-      .command('dryRunPage <path>')
+      .command('dryRunMini <path>')
       .description(`Will only create a bundle. path - is path to js file or npm package.
       \t\t\texamples:
       \t\t\t  ${this.program.name()} mini ./index.js : use single js file
