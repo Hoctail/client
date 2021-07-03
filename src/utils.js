@@ -186,11 +186,11 @@ async function rollupBundle (inputPath, rollupConfigPath) {
   warnings.flush()
   options = options[0]
 
+  const pkgDir = findPkgDir(inputPath)
   // use inputPath or 'main' from package.json
-  let pkg = require(path.join(
-    findPkgDir(inputPath),
-    'package.json',
-  )) || {}
+  let pkg = pkgDir
+    ? require(path.join(pkgDir, 'package.json')) || {}
+    : {}
   options.input = inputPath || pkg.main
 
   // options is an array of "inputOptions" objects with an additional "output"
