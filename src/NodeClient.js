@@ -13,9 +13,16 @@ const { StringDecoder } = require('string_decoder')
 const Client = require('@hoctail/query')
 const tar = require('tar')
 const { Response } = require('node-fetch')
-const { pack } = require('./utils')
-
 const decoder = new StringDecoder('utf8')
+const path = require('path')
+const chalk = require('chalk')
+const {
+  pack,
+  checkAppType,
+  rollupBundle,
+  putFile,
+} = require('./utils')
+
 
 /**
  * User-defined options to Client constructor
@@ -127,6 +134,43 @@ class NodeClient extends Client {
   }
 
   /**
+   * Get app type.
+   * 
+   * Must be in init state already.
+   * @public
+   * @return {Promise<string>}
+   */
+  async getAppType () {
+    return await this.wait(() => {
+      const { serverSideTx } = require('@hoctail/patch-interface')
+      let appType = ''
+      serverSideTx(hoc, ({ store }) => {
+        const { AppRecordSpace } = require('@hoc/apps.api')
+        const app = AppRecordSpace.create({ record: store.system.schemaRecord.id })
+        appType = app.appTypeName
+      })
+      return appType
+    })
+  }
+
+  /**
+   * Ensure that app was initialized (first time)
+   * @param {NodeClient} client
+   * @returns {Promise<void>}
+   * @private
+   */
+   async _ensureApp () {
+    if (!this.app) {
+      throw new Error(`Target app undefined, see --help`)
+    }
+    const appState = await this.getAppState()
+    if (appState.state === 'created') {
+      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(this.app)} :\n`)
+      await this.initApp()
+    }
+  }
+
+  /**
    * Initialize application
    *
    * Should be executed once if you're creating an app manually.
@@ -207,6 +251,31 @@ class NodeClient extends Client {
       name,
       path: config.input.input,
       bundle: config.output.file,
+    }
+  }
+
+  /**
+   * Create and install bundle to a 'mini' app type.
+   * @param {string} filePath path to js file to bundle or path to bundle
+   * @param {boolean} [bundled=false] set true if filePath is already bundled
+  */
+  async installMini (filePath, bundled = false) {
+    await this._ensureApp()
+    console.log(`${chalk.green(`Will update 'mini' app → `)} ${chalk.cyan(this.app)} :\n`)
+    if(await checkAppType(this, 'mini')) {
+      let bundledName
+      if (bundled) bundledName = filePath
+      else {
+        const bundles = await rollupBundle(
+          filePath,
+          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
+        )
+        if (bundles.length) {
+          const { fileName } = bundles[0]
+          bundledName = fileName
+        }
+      }
+      await putFile (this, bundledName, '/miniapp.js')
     }
   }
 

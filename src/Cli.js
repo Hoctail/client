@@ -6,7 +6,8 @@ const commander = require('commander')
 const { spawn } = require('child_process')
 const chalk = require('chalk')
 const updateNotifier = require('update-notifier')
-const { findPkgDir } = require('./utils')
+const { findPkgDir, rollupBundle } = require('./utils')
+const path = require('path')
 
 const { NodeClient } = require('./NodeClient')
 
@@ -48,6 +49,8 @@ class Cli {
     this._setupEnv()
     this._setupServe()
     this._setupInstall()
+    this._setupMini()
+    this._setupDryRunMini()
     this._setupRepl()
   }
 
@@ -66,16 +69,18 @@ class Cli {
    * @param {CliCommand} command
    * @return {function(...[*]): Promise<void>}
    */
-  _wrap (command) {
+  _wrap (command, withClient=true) {
     return async (...args) => {
       if (args.length !== command.length) {
         console.warn(`WARN: Unknown/redundant options were ignored: ${args[args.length - 1].join(' ')}`)
       }
       const cmdObj = args[command.length - 1]
-      const client = this.createClient(cmdObj)
+      const client = withClient ? this.createClient(cmdObj) : null
       try {
         await command(client, ...args)
-        await client.close()
+        if (withClient) {
+          await client.close()
+        }
         process.exit(0)
       } catch (e) {
         console.error(e.message)
@@ -105,23 +110,6 @@ class Cli {
   }
 
   /**
-   * Ensure that app was initialized (first time)
-   * @param {NodeClient} client
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _ensureApp (client) {
-    if (!client.app) {
-      throw new Error(`Target app undefined, see --help`)
-    }
-    const appState = await client.getAppState()
-    if (appState.state === 'created') {
-      console.log(`${chalk.green('Will initialize app → ')} ${chalk.cyan(client.app)} :\n`)
-      await client.initApp()
-    }
-  }
-
-  /**
    * Install a local package/file into remote app
    * @param {NodeClient} client
    * @param {string} path - local path to entry point (file/dir)
@@ -146,7 +134,7 @@ class Cli {
     const action = this._wrap(async (client, path, serverPath) => {
       try {
         console.log('')
-        await this._ensureApp(client)
+        await client._ensureApp()
         console.log(`${chalk.green('Will install → ')} ${chalk.cyan(client.app)} :\n`)
         let pkg
         const pkgDir = findPkgDir(path)
@@ -171,6 +159,47 @@ class Cli {
       .action(action)
   }
 
+  _setupMini () {
+    // if dryrun specified then we have no client
+    const action = this._wrap(async (client, filePath) => {
+      try {
+        await client.installMini(filePath)
+      } catch (e) {
+        console.error(e.stack)
+        throw e
+      }
+    })
+    this.program
+      .command('mini <path>')
+      .description(`install UI app type = 'mini'. path - is path to single js file or npm package.
+      \t\t\texamples:
+      \t\t\t  ${this.program.name()} mini ./index.js : use single js file
+      \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
+      .action(action)
+  }
+
+  _setupDryRunMini () {
+    // if dryrun specified then we have no client
+    const action = this._wrap(async (client, filePath) => {
+      try {
+        await rollupBundle(
+          filePath,
+          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
+        )
+      } catch (e) {
+        console.error(e.stack)
+        throw e
+      }
+    }, false)
+    this.program
+      .command('dryRunMini <path>')
+      .description(`Will only create a bundle. path - is path to js file or npm package.
+      \t\t\texamples:
+      \t\t\t  ${this.program.name()} mini ./index.js : use single js file
+      \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
+      .action(action)
+  }
+
   /**
    * Add the `serve` command
    * @protected
@@ -179,7 +208,7 @@ class Cli {
     const action = this._wrap(async (client, path) => {
       try {
         console.log('')
-        await this._ensureApp(client)
+        await client._ensureApp()
         console.log(`${chalk.green('Will serve at → ')} ${chalk.cyan(client.app)} :\n`)
         await this._install(client, path, './server')
         const url = await client.wait(() => { return require('@hoc/http-server').url() })
@@ -292,7 +321,7 @@ class Cli {
   _setupEnv () {
     const action = this._wrap(async (client, cmd) => {
       try {
-        await this._ensureApp(client)
+        await client._ensureApp()
         const remote = await client.getEnv()
         const local = this._getEnv()
         switch (cmd) {
