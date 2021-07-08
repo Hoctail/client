@@ -7,65 +7,96 @@
 > It's in demo stage and only **available for testing**.  
 > Hoctail client is an interactive console that runs locally and is using an API to interact with **Hoctail** server.  
 
-### 🏠 [Homepage](https://github.com/hoctail/client)
+## 🏠 [Homepage](https://github.com/hoctail/client)
 
-### Index
+## Index
 * [Install](#install)
-* [Hoctail server application](#server-app)
-* [Hoctail client](#client)
-* [Example server app](#server-app-example)
+* [Api Key](#api-key)
+* [Node client API](#node-client)
+* [Deploy express app](#deploy-express)
+* [Deploy mini app](#deploy-mini)
+* [Run code](#run-code)
+  * [Interactive mode (REPL)](#run-repl)
+  * [Execute a script file](#run-script)
 * [CLI reference](#cli)
 
 ## Install <a name="install"></a>
 
-Install the client, create and export [API key](https://hoctail.github.io/hoctail/tutorial-api-keys.html)
 ```
 npm install @hoctail/client
-export HOCTAIL_API_KEY=Your-API-Key-Here
 ```
 
-# Hoctail server application <a name="server-app"></a>
-> *Hoctail server app* is a typical [Expressjs](https://expressjs.com/) application we run in a virtual server.
-> Every Hoctail app has an endpoint that looks like <span style='color:blue'>*demo.hoctail.io/username/myapp*</span>. 
+## Api Key <a name="api-key"></a>
+Create Api Key as shown [here](https://hoctail.github.io/hoctail/tutorial-api-keys.html).
+Then create a project's folder on your pc, and create `.env` file with contents like here:
+```
+HOCTAIL_API_KEY=Your-API-Key-Here
+```
+or export environment variables: `HOCTAIL_API_KEY` - Api key, `HOCTAIL_APP` - user app.
+Every time when CLI is executed it will connect to a server using above settings. 
 
-In order to get your application alive at first you have to [sign-up](https://demo.hoctail.io/sys/signup/)
-and create a new application in the browser.  
-A default application will be available on the endpoint associated with your app.  
-You can replace it by installing your own app from the `hoctail` cli.  
-Add dependencies to your package.json and run the `serve` command.
-
-*Note:* if you have no other deps you don't need to have `package.json` at all.
-
-# Hoctail client <a name="client"></a>
-## Hoctail client can serve an application on the platform
-```bash
-# optionally specify `--key` if you didn't export HOCTAIL_API_KEY
-hoctail --app MyApp serve /local/path/to/app
+## Node client API <a name="node-client"></a>
+CLI assigns an instance of configured <b>[Node client](https://hoctail.github.io/hoctail/module-nodejs-NodeClient.html)</b> to `hoctail` global variable. It provides an API for working with a remote application to run queries, fetch logs or run javascript code on a server in the **sandbox**. On server-side each application have a global <b>[hoc](https://hoctail.github.io/hoctail/hoc.html)</b> object, that can be used to access the platform APIs. Here some examples on how `hoctail`, `hoc` objects can be used:
+``` js
+await hoctail.wait(() => { return hoc.schema /*server-side context*/ })
+await hoctail.run(() => { /*server-side context*/ })
 ```
 
-## Run code in an interactive mode (REPL)
+## CLI can deploy [Hoctail Applications](tutorial-applications.html)
+> Application is a single *js* file without specific dependencies or a folder containing a `package.json`.
+
+### Deploy <b>[Expressjs](tutorial-applications.html#app-type-express)</b> app <a name="deploy-express"></a>
+Check a complete express app example [here](tutorial-applications.html#express-app-example).
+Here are generic steps to serve it:
+
+1. Go to a local `nodejs` dev environment
+1. Create API key in the Hoctail UI
+1. Create your app in the Hoctail UI (name: `MyApp`)
+1. Run the following:
 ```bash
-# optionally specify `--key` if you didn't export HOCTAIL_API_KEY
+$ mkdir MyApp
+$ cd MyApp
+$ npm init
+$ npm install .... your dependencies ....
+.....
+$ npm install --dev @hoctail/client
+
+.... create index.js with your app code
+
+$ export HOCTAIL_KEY='your-api-key'
+$ hoctail --app MyApp serve
+$ 
+```
+
+### Deploy <b>[Mini](tutorial-applications.html#app-type-mini)</b> app <a name="deploy-mini"></a>
+Run it:
+```
+$ hoctail --app MyMiniApp mini ./index.js
+Will initialize app →  MyMiniApp :
+Will update 'mini' app →  MyMiniApp :
+bundle size: 1303 bytes 
+```
+
+## Run code <a name="run-code"></a>
+CLI executes a source code provided by user in a local `nodejs` environment. *Node Client* is using to run code provided by user in application's context on a server-side. 
+
+### Interactive mode (REPL) <a name="run-repl"></a>
+To enter REPL mode run `hoctail` CLI without command arguments:
+```bash
 hoctail --app MyApp
+[user]@app> await hoctail.wait(() => hoc.schema)
+[user]@app> .help
 ```
-While in REPL try `.help` for information about custom commands.
-For instance `.sql` command runs a sql query, and `.logs` command fetches the latest app logs.  
-You can also run javascript code in there.
+REPL prompt is showing `[user]@app>` info about current execution context.
+Try `.help` for information about standard REPL commands.
+<br>For instance `.sql` command runs a sql query, and `.logs` command fetches the latest app logs.  
+> *Note*: REPL supports [top-level await](https://github.com/tc39/proposal-top-level-await).
 
-*Note:* REPL supports [top-level await](https://github.com/tc39/proposal-top-level-await)
-
-## Execute javascript
-You can make API calls directly from REPL or from your own script.
-For example, to run a script:
-```bash
-hoctail --app MyApp /path/to/your/script.js
-```
-*Note:* the scripts run locally in a hoctail REPL, you need to use `await hoctail.wait()`, `await hoctail.run()`
-or other APIs to run code in a virtual server context
-
-script.js
+### Execute a script file <a name="run-script"></a>
+Users can run their (deployment) scripts:
 
 ```js
+// script.js
 const result = await hoctail.wait(async () => {
   const fetch = require('node-fetch')
   try {
@@ -87,73 +118,6 @@ $ hoctail --app MyApp ./sript.js
 $
 ```
 
-# Client-side javascript API
-Client interacts with a server using a [NodeClient](https://hoctail.github.io/hoctail/module-nodejs-NodeClient.html) API.
-The REPL context contains `hoctail` global object - a configured instance of *NodeClient* that can be used.  
-Client API can run queries, fetch logs or even run javascript code on a server in the **sandbox**, see below.
-
-# Server-side javascript API (sandbox)
-Each Hoctail application has a set of pre-created tables/views like `logs` in its own schema. Use the `.relations` command to check it out.  
-A global [hoc](https://hoctail.github.io/hoctail/hoc.html) object is available in your javascript server app.
-It can be used to access the platform server side APIs.
-
-# Example server app <a name="server-app-example"></a>
-
-Create `express` app
-
-MyApp.js
-
-```js
-const express = require('express')
-const fetch = require('node-fetch')
-const app = express()
-
-// simple string response
-app.get('/', (req, res) => res.send('Hello world'))
-// use stored procedure/function call
-app.get('/time', (req, res) => res.send(Date(hoc.call('now')).toString()))
-// use raw SQL results
-app.get('/requests', (req, res) => res.send(hoc.sql('select * from http_srv_logs')))
-// use async function and fetch from a remote service
-app.get('/google', async (req, res, next) => {
-  try {
-    const data = await fetch('https://google.com')
-    const text = await data.text()
-    res.send(text)
-  } catch (e) {
-    next(e)
-  }
-})
-// don't forget to call listen()
-// TCP port argument (3000) will be ignored
-app.listen(3000, () => {
-  // will be sent to the app logs, run .logs from CLI
-  console.log('MyApp is listening')
-})
-```
-
-To deploy your app:
-
-```
-$ hoctail --app MyApp serve ./MyApp.js
-
-Will initialize app →  MyApp :
-
-Will serve at →  MyApp :
-  /home/user/MyApp/MyAppjs → ./server
-
-Your app is serving at: https://demo.hoctail.io/user@example.com/MyApp/
-$ 
-```
-
-Now you should be able to send requests
-
-```
-$ curl https://demo.hoctail.io/user@example.com/MyApp/
-Hello world
-$ 
-```
-
 # CLI reference <a name="cli"></a>
 
 ```bash
@@ -164,8 +128,10 @@ Options:
   -V, --version                output the version number
   --endpoint <endpoint_url>    Hoctail Endpoint url, env: HOCTAIL_ENDPOINT
   --key <api_key>              Hoctail API key, env: HOCTAIL_API_KEY
-  --app <app_name>             Hoctail app name, format: 'owner/name', env: HOCTAIL_APP
-  --log-level <log_level>      Minimal log level, default: LOG, env: HOCTAIL_LOG_LEVEL
+  --app <app_name>             Hoctail app name, format: 'owner/name', env:
+                               HOCTAIL_APP
+  --log-level <log_level>      Minimal log level, default: LOG, env:
+                               HOCTAIL_LOG_LEVEL
   -h, --help                   display help for command
 
 Commands:
@@ -175,41 +141,27 @@ Commands:
           			  hoctail env push : replace app env variables with the contents of local .env file
           			  hoctail env pull : download remote app variables to a local .env file
           
-  serve [path]                 serve a local `expressjs` app on server, default: [path] = .
+  serve [path]                 serve a local `expressjs` app on server,
+                               default: [path] = .
   install <path> [serverPath]  install a local npm pkg/module on server, optionally use a server path
           			examples:
           			  hoctail install ./index.js : install a package from an entrypoint file
           			  hoctail install some-package : install a local npm package
           			  hoctail install ./module.js ./module : install a local entrypoint as require('./module')
+  mini <path>                  install UI app type = 'mini'. path - is path to single js file or npm package.
+        			examples:
+        			  hoctail mini ./index.js : use single js file
+        			  hoctail mini some-package : use a local npm module
+  dryRunMini <path>            Will only create a bundle. path - is path to js file or npm package.
+        			examples:
+        			  hoctail mini ./index.js : use single js file
+        			  hoctail mini some-package : use a local npm module
   repl [script]                launch repl
   help [command]               display help for command
 
 Simple call will launch repl:
   $ hoctail
   hoctail> 
-
-```
-
-## Serve
-
-Serve a local npm app
-
-1. Create API key in the Hoctail UI
-1. Create your app in the Hoctail UI (name: `MyApp`)
-1. Run the following:
-```bash
-$ mkdir MyApp
-$ cd MyApp
-$ npm init
-$ npm install .... your dependencies ....
-.....
-$ npm install --dev @hoctail/client
-
-.... create index.js with your app code
-
-$ export HOCTAIL_KEY='your-api-key'
-$ hoctail --app MyApp serve
-$ 
 ```
 
 ## Install
