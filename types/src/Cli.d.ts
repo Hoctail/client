@@ -10,7 +10,7 @@ export class Cli {
 
     run(): void;
 
-    createClient(cmdObj: Command): NodeClient;
+    createClient(cmdObj: Command): Promise<NodeClient>;
 
     _setupInstall(): void;
 
