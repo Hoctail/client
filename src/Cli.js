@@ -67,6 +67,7 @@ class Cli {
   /**
    * Helper for wrapping common commands
    * @param {CliCommand} command
+   * @param {boolean} withClient
    * @return {function(...[*]): Promise<void>}
    */
   _wrap (command, withClient=true) {
@@ -75,7 +76,7 @@ class Cli {
         console.warn(`WARN: Unknown/redundant options were ignored: ${args[args.length - 1].join(' ')}`)
       }
       const cmdObj = args[command.length - 1]
-      const client = withClient ? this.createClient(cmdObj) : null
+      const client = withClient ? await this.createClient(cmdObj) : null
       try {
         await command(client, ...args)
         if (withClient) {
@@ -92,10 +93,10 @@ class Cli {
   /**
    * Create a new client
    * @param {commander.Command} cmdObj
-   * @return {NodeClient}
+   * @return {Promise<NodeClient>}
    * @protected
    */
-  createClient (cmdObj) {
+  async createClient (cmdObj) {
     const client = new NodeClient(cmdObj.parent, cmdObj.args)
     if (!client.token) {
       throw new Error(`No api key was found, use HOCTAIL_API_KEY env variable`)
@@ -238,7 +239,7 @@ class Cli {
         let replServer
         let client
         try {
-          client = this.createClient(cmdObj)
+          client = await this.createClient(cmdObj)
           try {
             await client.connect()
           } catch (e) {
