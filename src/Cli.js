@@ -272,6 +272,7 @@ class Cli {
           const fileData = readFileSync(script).toString('utf8')
           const scriptDir = realpathSync(dirname(script))
           const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+          await client._ensureApp()
           const scriptFunc = new AsyncFunction('hoctail', '__dirname', '__filename', 'require', 'process', fileData)
           scriptFunc(client, scriptDir, join(scriptDir, basename(script)), require, process)
             .then(() => die())
