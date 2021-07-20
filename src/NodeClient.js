@@ -145,8 +145,8 @@ class NodeClient extends Client {
       const { serverSideTx } = require('@hoctail/patch-interface')
       let appType = ''
       serverSideTx(hoc, ({ store }) => {
-        const { AppRecordSpace } = require('@hoc/apps.api')
-        const app = AppRecordSpace.create({ record: store.system.schemaRecord.id })
+        const { AppRecordSpaceAdmin } = require('@hoc/apps.api')
+        const app = AppRecordSpaceAdmin.create({ record: store.system.schemaRecord.id })
         appType = app.appTypeName
       })
       return appType
