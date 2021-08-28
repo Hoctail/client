@@ -39,6 +39,17 @@ class Cli {
       .option('--key <api_key>', 'Hoctail API key, env: HOCTAIL_API_KEY')
       .option('--app <app_name>', `Hoctail app name, format: 'owner/name', env: HOCTAIL_APP`)
       .option('--log-level <log_level>', 'Minimal log level, default: LOG, env: HOCTAIL_LOG_LEVEL')
+      .option('--opts <items>', `comma separated list. Supported values:
+      \t\t\tdryrun - works with 'mini' command. Create bundle and skip submission.
+      \t\t\treact - works with 'mini' command. Bundle with react & styled-components.
+      \t\tbundled - works with 'mini' command. Provide prepared bundle.
+      `, val => {
+        const res = {}
+        val.split(',').map(s => s.trim().toLowerCase()).forEach(key => {
+          res[key] = true
+        })
+        return res
+      })
     this.config = config || {}
   }
 
@@ -50,7 +61,6 @@ class Cli {
     this._setupServe()
     this._setupInstall()
     this._setupMini()
-    this._setupDryRunMini()
     this._setupRepl()
   }
 
@@ -72,10 +82,7 @@ class Cli {
    */
   _wrap (command, withClient=true) {
     return async (...args) => {
-      if (args.length !== command.length) {
-        console.warn(`WARN: Unknown/redundant options were ignored: ${args[args.length - 1].join(' ')}`)
-      }
-      const cmdObj = args[command.length - 1]
+      const cmdObj = args[args.length - 1]
       const client = withClient ? await this.createClient(cmdObj) : null
       try {
         await command(client, ...args)
@@ -162,9 +169,10 @@ class Cli {
 
   _setupMini () {
     // if dryrun specified then we have no client
-    const action = this._wrap(async (client, filePath) => {
+    const action = this._wrap(async (client, filePath, cmdObj) => {
+      const { opts } = cmdObj.parent
       try {
-        await client.installMini(filePath)
+        await client.installMini(filePath, opts)
       } catch (e) {
         console.error(e.stack)
         throw e
@@ -173,28 +181,9 @@ class Cli {
     this.program
       .command('mini <path>')
       .description(`install UI app type = 'mini'. path - is path to single js file or npm package.
-      \t\t\texamples:
-      \t\t\t  ${this.program.name()} mini ./index.js : use single js file
-      \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
-      .action(action)
-  }
-
-  _setupDryRunMini () {
-    // if dryrun specified then we have no client
-    const action = this._wrap(async (client, filePath) => {
-      try {
-        await rollupBundle(
-          filePath,
-          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
-        )
-      } catch (e) {
-        console.error(e.stack)
-        throw e
-      }
-    }, false)
-    this.program
-      .command('dryRunMini <path>')
-      .description(`Will only create a bundle. path - is path to js file or npm package.
+      \t\t\tif --opts=dryrun specified it will only create a bundle.
+      \t\t\tif --opts=react when having explicit react dependencies.
+      \t\t\tif --opts=bundled just upload provided bundle.
       \t\t\texamples:
       \t\t\t  ${this.program.name()} mini ./index.js : use single js file
       \t\t\t  ${this.program.name()} mini some-package : use a local npm module`)
