@@ -42,7 +42,7 @@ class Cli {
       .option('--opts <items>', `comma separated list. Supported values:
       \t\t\tdryrun - works with 'mini' command. Create bundle and skip submission.
       \t\t\treact - works with 'mini' command. Bundle with react & styled-components.
-      \t\tbundled - works with 'mini' command. Provide prepared bundle.
+      \t\t\tbundled - works with 'mini' command. Provide prepared bundle.
       `, val => {
         const res = {}
         val.split(',').map(s => s.trim().toLowerCase()).forEach(key => {
