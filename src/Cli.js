@@ -262,7 +262,7 @@ class Cli {
           const scriptDir = realpathSync(dirname(script))
           const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
           // should not try to `init_schema` if there is no app (ex. `public`)
-          if (this.app) {
+          if (client.app) {
             await client._ensureApp()
           }
           const scriptFunc = new AsyncFunction('hoctail', '__dirname', '__filename', 'require', 'process', fileData)
