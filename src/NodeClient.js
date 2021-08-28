@@ -257,25 +257,34 @@ class NodeClient extends Client {
   /**
    * Create and install bundle to a 'mini' app type.
    * @param {string} filePath path to js file to bundle or path to bundle
-   * @param {boolean} [bundled=false] set true if filePath is already bundled
+   * @param {object} [opts] set true if filePath is already bundled
   */
-  async installMini (filePath, bundled = false) {
-    await this._ensureApp()
-    console.log(`${chalk.green(`Will update 'mini' app → `)} ${chalk.cyan(this.app)} :\n`)
-    if(await checkAppType(this, 'mini')) {
-      let bundledName
-      if (bundled) bundledName = filePath
-      else {
-        const bundles = await rollupBundle(
-          filePath,
-          path.resolve(__dirname, '..', 'rollup.mini.config.js'),
-        )
-        if (bundles.length) {
-          const { fileName } = bundles[0]
-          bundledName = fileName
-        }
+  async installMini (filePath, opts = {}) {
+    const { bundled, dryrun, react } = opts
+    let resultedBundleName
+
+    if (bundled) {
+      resultedBundleName = filePath
+    } else {
+      const confFName = react
+        ? 'rollup.react.mini.config.js'
+        : 'rollup.mini.config.js'
+      const bundles = await rollupBundle(
+        filePath,
+        path.resolve(__dirname, '..', confFName),
+      )
+      if (bundles.length) {
+        const { fileName } = bundles[0]
+        resultedBundleName = fileName
       }
-      await putFile (this, bundledName, '/miniapp.js')
+    }
+
+    if (!dryrun) {
+      await this._ensureApp()
+      console.log(`${chalk.green(`Will update 'mini' app → `)} ${chalk.cyan(this.app)} :\n`)
+      if(await checkAppType(this, 'mini')) {
+        await putFile (this, resultedBundleName, '/miniapp.js')
+      }
     }
   }
 
